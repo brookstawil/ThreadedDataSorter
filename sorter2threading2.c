@@ -11,27 +11,6 @@
 
 #define MAX_PATH_LENGTH 256
 
-//arguments for processfiletosort
-//Each thread allocates memory for these arguments, and are used throughout the sorting process.
-typedef struct threadArg{
-	char* pathName;
-	char* directoryName;
-	FILE* csvFile;
-	char* directory_path;
-	char* column_to_sort;
-	char* output_dir;
-	int counter;
-} args;
-
-//arguments for travdir
-typedef struct threadArg2{
-	DIR* directory;
-	char* directory_path;
-	char* column_to_sort;
-	int counter;
-	char* output_dir;
-} args2;
-
 //the root is now an initial thread process
 pid_t root;
 
@@ -83,66 +62,78 @@ int main (int argc, char* argv[]) {
 }
 
 //Takes in a thread argument structure, and uses that to retrieve all necessary information.
-void processFiletoSort(void* margs){
-	args* margss = margs;
+void processFiletoSort(void* args){
+	args_sortFile* sortFileArgs = args;
 	//THOUGHTS: MAYBE OPEN THE CSVFILE HERE AND NOT IN TRAVDIR ????
-	printf("the tid of this sorting thread is %d \n", pthread_self());
+	printf("Thread %u is sorting the file: %s \n", pthread_self() ,sortFileArgs->directoryName);
+
 
 	//change path for accessing the csv file
 	char * csvFileOutputPath = malloc(sizeof(char)*512);
 	//Remove the ".csv" from d_name to insert "-sorted-VALIDCOLUMN.csv
-	char *file_name = (char *) malloc(strlen(margss->directoryName) + 1);
-	strcpy(file_name, margss->directoryName);					
+	char *file_name = (char *) malloc(strlen(sortFileArgs->directoryName) + 1);
+	strcpy(file_name, sortFileArgs->directoryName);					
 	char *lastdot = strrchr(file_name, '.');
 	if (lastdot != NULL) {
 		*lastdot = '\0';
 	}
 					
 	//Default behavior dumps files into input directory
-	if(margss->output_dir == NULL) {
-		strcpy(csvFileOutputPath,margss->directory_path);
+	if(sortFileArgs->output_dir == NULL) {
+		strcpy(csvFileOutputPath,sortFileArgs->directory_path);
 	} else { //If given an output directory
 		struct stat sb;
-		if (stat(margss->output_dir, &sb) == -1) {
-			mkdir(margss->output_dir, 0700); //RWX for owner
+		if (stat(sortFileArgs->output_dir, &sb) == -1) {
+			mkdir(sortFileArgs->output_dir, 0700); //RWX for owner
 		} 
-		strcpy(csvFileOutputPath,margss->output_dir);
+		strcpy(csvFileOutputPath,sortFileArgs->output_dir);
 	}
 
 	strcat(csvFileOutputPath,"/");
 	strcat(csvFileOutputPath,file_name);
 	strcat(csvFileOutputPath,"-sorted-");
-	strcat(csvFileOutputPath,margss->column_to_sort);
+	strcat(csvFileOutputPath,sortFileArgs->column_to_sort);
 	strcat(csvFileOutputPath,".csv");
 
 	FILE *csvFileOut = fopen(csvFileOutputPath,"w");
 
 	//sort the csv file
 	char* column_to_sort="";
-	column_to_sort=margss->column_to_sort;
-	sortnew(margss->csvFile, csvFileOut, column_to_sort);
-	free(csvFileOutputPath);
-	free(file_name);
+	column_to_sort=sortFileArgs->column_to_sort;
+	sortnew(sortFileArgs->csvFile, csvFileOut, column_to_sort);
+	//free(csvFileOutputPath);
+	//free(file_name);
 
 	pthread_exit(NULL);
-	return NULL;
 }
 
-//manages the created threads
-void createThreadsSort(char* pathname, char* d_name, char* column_to_sort, FILE* csvFile, char* output_dir, char* directory_path,int counter){
-	args *margs = calloc(1,sizeof *margs);
-	margs->pathName = pathname;
-	margs->directoryName = d_name;
-	margs->csvFile = csvFile;
-	margs->column_to_sort=column_to_sort;
-	margs->directory_path = directory_path;
-	margs->output_dir = output_dir;
-	margs->counter = counter;
-	pthread_t thread;
-	pthread_create(&thread, 0, processFiletoSort, margs);
+//Helper function that sets the arguments for a thread that sorts a given file
+args_sortFile * createThreadsSort(char* pathname, char* d_name, char* column_to_sort, FILE* csvFile, char* output_dir, char* directory_path,int counter){
+	args_sortFile *sortFileArgs = calloc(1, sizeof(args_sortFile));
+	sortFileArgs->pathName = pathname;
+	sortFileArgs->directoryName = d_name;
+	sortFileArgs->csvFile = csvFile;
+	sortFileArgs->column_to_sort=column_to_sort;
+	sortFileArgs->directory_path = directory_path;
+	sortFileArgs->output_dir = output_dir;
+	sortFileArgs->counter = counter;
+	return sortFileArgs;
+}
 
-	pthread_join(thread, NULL);
-	return;
+args_travelDirectory * createThreadsTraverse(char * output_dir, int counter, pthread_t* threadHolder, DIR * directory, char *directory_path, char* column_to_sort){
+	
+	args_travelDirectory* travelDirectoryArgs = (args_travelDirectory *)malloc(sizeof(args_travelDirectory));
+
+	travelDirectoryArgs->output_dir = output_dir;
+	travelDirectoryArgs->counter = counter;
+	travelDirectoryArgs->threadHolder = threadHolder;
+	travelDirectoryArgs->directory = directory;
+	travelDirectoryArgs->directory_path = directory_path;
+	travelDirectoryArgs->column_to_sort = (char*)(calloc(1,strlen(column_to_sort)));
+	strcpy(travelDirectoryArgs->column_to_sort,"movie_title");
+	//printf("The column to sort in travelDirectoryArgs is %s \n", travelDirectoryArgs->column_to_sort);
+
+	return travelDirectoryArgs;
 }
 
 //open the directory and create threadholder
@@ -157,41 +148,29 @@ int travdir(const char * input_dir_path, char* column_to_sort, const char * outp
         return 1;
 	}
 
-	//counter counts how many peer threads (not main thread!) have been created
-	int counter = 0;
-
-	//initialize this to hold 5 threads for now
+	//initialize this to hold 20 threads for now
 	//have one thread go through directories
-	//int numThreads = 5;
-	//pthread_t* threadHolder = (pthread_t*)(malloc(sizeof(pthread_t) * numThreads));
-	args2* margs2;
-	margs2->output_dir=output_dir;
-	margs2->counter = counter;
-	//margs2->threadHolder = threadHolder;
-	margs2->directory =directory;
-	margs2->directory_path =directory_path;
-	margs2->column_to_sort = (char*)(calloc(1,strlen(column_to_sort)));
-	strcpy(margs2->column_to_sort,"movie_title");
-	printf("the column to sort in margs2 is %s \n", margs2->column_to_sort);
-	goThroughPath(margs2);
-	free(margs2->column_to_sort);
-
-	//free(threadHolder);
+	int numThreads = 20;
+	pthread_t* threadHolder = (pthread_t*)(malloc(sizeof(pthread_t) * numThreads));
+	
+	goThroughPath(createThreadsTraverse(output_dir, 0, threadHolder, directory, directory_path, column_to_sort));
 
 	return 0;
 }
 	
-//function pointer to go through the directory path and finds csvs
-void goThroughPath(void* margs2){
-	args2* margss2 = margs2;
+//Function pointer to go through the directory path and finds csvs.
+//Arguments are set without a helper are are set in this function
+void goThroughPath(void* args){
+	args_travelDirectory* travelDirectoryArgs = args;
 
-	printf("the tid of this traversing thread is %d \n", pthread_self());
+	printf("This is a traversing thread with a TID: %u \n", pthread_self());
+	printf("This thread is searching though: %s\n", travelDirectoryArgs->directory_path);
 	//copy from struct to this function
-	char* column_to_sort = margss2->column_to_sort;
-	printf("the column to sort is %s \n", column_to_sort);
-	DIR* directory = margss2->directory;
-	char* directory_path = margss2->directory_path;
-	char* output_dir = margss2->output_dir;
+	char* column_to_sort = travelDirectoryArgs->column_to_sort;
+	//printf("The column to sort is %s \n", column_to_sort);
+	DIR* directory = travelDirectoryArgs->directory;
+	char* directory_path = travelDirectoryArgs->directory_path;
+	char* output_dir = travelDirectoryArgs->output_dir;
 
 	//while we go through the directory -> in the parent process keep looking for csv files
 	while(directory != NULL) {
@@ -200,7 +179,7 @@ void goThroughPath(void* margs2){
 		currEntry = readdir(directory);
 
 		//making sure not to fork bomb
-		if(margss2->counter == 256){
+		if(travelDirectoryArgs->counter == 256){
 			break;
 		}
 		//end of file stream, break-> now wait for children and children's children
@@ -221,19 +200,25 @@ void goThroughPath(void* margs2){
 					printf("ERROR: Path length is too long");
 					return;
 				}
-				//open new directory again
-				strcat(directory_path,"/");
-				strcat(directory_path,d_name);
-				directory = opendir(directory_path);
+				char * newDirectoryPath = (char *)malloc(strlen(directory_path) + strlen(d_name) + 2);
+				strcpy(newDirectoryPath, directory_path);
 
-				//use a function pointer to go through the travdir again
-				margss2->counter++;
-				margss2->directory=directory;
-				margss2->directory_path=directory_path;
+				//open new directory again
+				strcat(newDirectoryPath,"/");
+				strcat(newDirectoryPath,d_name);
+				DIR * newDirectory = opendir(newDirectoryPath);
+
+				//We have found a new directory and must thus make a new thread for it.
+				//This requires updating the counter of the parent directory, as well as adding the thread to the threadholder
+
+				//We can just call travdir again and a new thread with proper args will be created
+				int numThreads = 20;
+				pthread_t* threadHolder = (pthread_t*)(malloc(sizeof(pthread_t) * numThreads));
+				
 				pthread_t thread;
-				pthread_create(&thread, 0, goThroughPath, margss2);
-				pthread_join(thread, NULL);
-				//THOUGHTS: where do we call pthread_exit? Do we need to do that?
+				pthread_create(&thread, 0, goThroughPath, createThreadsTraverse(output_dir, 0, threadHolder, newDirectory, newDirectoryPath, column_to_sort));
+
+				travelDirectoryArgs->threadHolder[travelDirectoryArgs->counter++] = thread;
 			}
 		} 
 		else if(currEntry->d_type == DT_REG) { 	//regular files, need to check to ensure ".csv"
@@ -241,31 +226,46 @@ void goThroughPath(void* margs2){
 			char pathname [256];
 			FILE* csvFile;
 			sprintf(pathname, "%s/%s", directory_path, d_name);
-			csvFile = fopen(pathname, "r");
 
 			//Check to see if the file is a csv
 			char *lastdot = strrchr(d_name, '.');
 
 			if (strcmp(lastdot,".csv") != 0) {
 				printf("File is not a .csv: %s\n", d_name);
-			} 
-			else if (csvFile != NULL && !isAlreadySorted(pathname, column_to_sort)) {
-				//pathname has the full path to the file including extension
-				//directory_path has only the parent directories of the file
-				//instead of forking we call the method createThreadsSort
-				margss2->counter++;
-				createThreadsSort(pathname, d_name, column_to_sort, csvFile, output_dir, directory_path, margss2->counter);
-			}
+			} else if(isAlreadySorted(pathname, column_to_sort)) {
+				printf("File already sorted: %s\n", d_name);
+			} else {
+				csvFile = fopen(pathname, "r");
+				if (csvFile != NULL) {
+					//pathname has the full path to the file including extension
+					//directory_path has only the parent directories of the file
+					//instead of forking we call the method createThreadsSort
+					pthread_t thread;
+					pthread_create(&thread, 0, processFiletoSort, createThreadsSort(pathname, d_name, column_to_sort, csvFile, output_dir, directory_path, 0));
+					travelDirectoryArgs->threadHolder[travelDirectoryArgs->counter++] = thread;
+				}
+			}	
 		} else {
-			fprintf(stderr, "ERROR: Input is not a file or a directory\n");
-			return;
+
 		}	
 	}
 
 	//WAIT FOR THREADS TO FINISH 
-	size_t i = 0,j;
-	int totalthreads = margss2->counter;
+	int i,j;
+	int totalthreads = travelDirectoryArgs->counter;
 
+	printf("The thread %u has a count of: %d\n", pthread_self(), totalthreads);
+
+	printf("I am thread %u and these are my child threads: ", pthread_self());
+	for(i = 0; i < travelDirectoryArgs->counter; i++){
+		printf("%u, ",travelDirectoryArgs->threadHolder[i]);
+	}
+	printf("\n");
+
+	for(i = 0; i < travelDirectoryArgs->counter; i++){
+		pthread_join(travelDirectoryArgs->threadHolder[i], NULL);
+	}
+	
 	//while(totalthreads > 0){
 		//call pthread_join() to wait for other threads to terminate
 		//printf("TIDS of all child threads%d ", pthread_self());
@@ -273,19 +273,13 @@ void goThroughPath(void* margs2){
 		//pthread_join(thread, NULL);
 		//--totalthreads;
 	//}
-	
-	free(directory_path);	
-	if(closedir(directory)){
-		printf("ERROR: Could not close dir");
-		return;
+
+
+	if(getpid() == root){
+		printf("\nTotal number of threads: %d\n\r", travelDirectoryArgs->counter);	
 	}
 
-	if(getpid()==root){
-		printf("\nTotal number of threads: %d\n\r", margss2->counter);	
-	}
-
-	exit(i);
-	return;
+	pthread_exit(NULL);
 }
 
 //If it already contains the phrase -sorted-SOMEVALIDCOLUMN.csv then the file is already sorted
