@@ -12,4 +12,4 @@ char* strtok_single(char* str, char const* delims);
 char* findType(char* token);
 int isValidColumn(char* columnName);
 void printToCSV(FILE *csv_out, Row ** rows, int numRows, int numCols);
-Row ** sortnew(FILE *fp_in, char * columnToSort);
+void sortnew(FILE *fp_in, FILE *fp_out, char * columnToSort);

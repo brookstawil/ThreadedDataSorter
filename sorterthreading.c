@@ -69,7 +69,7 @@ const char* validColumnTypes[] = {
     "int"
 };
 
-Row ** sortnew(FILE* csv_in, char * columnToSort) {
+void sortnew(FILE* csv_in, FILE* csv_out, char * columnToSort) {
     int i,j;
     int columnToSortIndex, validNumRows;
     int rowIndex = 0;
@@ -148,13 +148,17 @@ Row ** sortnew(FILE* csv_in, char * columnToSort) {
     }
     validNumRows = rowIndex;
 
-    //Implement the sorting and call here
+    //Implment the sorting and call here
     doSort(rows,columnToSortIndex,columnToSortType,validNumRows);
 
     //Print to a CSV file
+    fprintf(csv_out, headerLine);
+    printToCSV(csv_out, rows, validNumRows, NUM_COLS);
+
+    fclose(csv_out);
     fclose(csv_in);
         
-    return rows;
+    return;
  //end of function
 }
 
