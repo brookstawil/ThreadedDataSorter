@@ -8,7 +8,6 @@
 #include <sys/types.h>
 #include "sorterthreading.c"
 #include "sorter2.h"
-#include "stack3.c"
 
 #define MAX_PATH_LENGTH 256
 
@@ -35,7 +34,6 @@ typedef struct threadArg2{
 
 //the root is now an initial thread process
 pid_t root;
-stack_safe *StackOfSortedFiles; 
 
 int main (int argc, char* argv[]) {
 	//check inputs 
@@ -49,6 +47,7 @@ int main (int argc, char* argv[]) {
 	char *errorMessage = "The command line must specify a column to sort with arg -c \nfor example:\n./sorter -c  valid_column -d inputdir -o outputdir\n./sorter -c  valid_column -d inputdir\n./sorter -c  valid_column\n";
 	int i; 
 	for (i = 0; i < argc; i++) { 
+		//printf("%s\n", argv[i]); 
 		char* argument = argv[i];
 		if(strcmp(argument,"-d") == 0){
 			starting_dir = argv[i+1];
@@ -120,8 +119,8 @@ void processFiletoSort(void* margs){
 
 	//sort the csv file
 	char* column_to_sort="";
-	column_to_sort = margss->column_to_sort;
-	sortnew(margss->csvFile, column_to_sort);
+	column_to_sort=margss->column_to_sort;
+	sortnew(margss->csvFile, csvFileOut, column_to_sort);
 	free(csvFileOutputPath);
 	free(file_name);
 
@@ -135,7 +134,7 @@ void createThreadsSort(char* pathname, char* d_name, char* column_to_sort, FILE*
 	margs->pathName = pathname;
 	margs->directoryName = d_name;
 	margs->csvFile = csvFile;
-	margs->column_to_sort = column_to_sort;
+	margs->column_to_sort=column_to_sort;
 	margs->directory_path = directory_path;
 	margs->output_dir = output_dir;
 	margs->counter = counter;
@@ -169,11 +168,11 @@ int travdir(const char * input_dir_path, char* column_to_sort, const char * outp
 	margs2->output_dir=output_dir;
 	margs2->counter = counter;
 	//margs2->threadHolder = threadHolder;
-	margs2->directory = directory;
-	margs2->directory_path = directory_path;
+	margs2->directory =directory;
+	margs2->directory_path =directory_path;
 	margs2->column_to_sort = (char*)(calloc(1,strlen(column_to_sort)));
-	//TODO: Implement using the input column_to_sort
-	strcpy(margs2->column_to_sort, "movie_title");
+	strcpy(margs2->column_to_sort,"movie_title");
+	printf("the column to sort in margs2 is %s \n", margs2->column_to_sort);
 	goThroughPath(margs2);
 	free(margs2->column_to_sort);
 
@@ -189,6 +188,7 @@ void goThroughPath(void* margs2){
 	printf("the tid of this traversing thread is %d \n", pthread_self());
 	//copy from struct to this function
 	char* column_to_sort = margss2->column_to_sort;
+	printf("the column to sort is %s \n", column_to_sort);
 	DIR* directory = margss2->directory;
 	char* directory_path = margss2->directory_path;
 	char* output_dir = margss2->output_dir;
