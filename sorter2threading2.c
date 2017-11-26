@@ -16,6 +16,7 @@
 pid_t root;
 pthread_t rootTID;
 stack_safe *StackOfSortedFiles;
+int numRows2;
 
 int main (int argc, char* argv[]) {
 	//check inputs 
@@ -70,7 +71,6 @@ int main (int argc, char* argv[]) {
 	return 0;
 }
 
-
 //Helper function that sets the arguments for a thread that sorts a given file
 args_sortFile * createThreadsSort(char* pathname, char* d_name, char* column_to_sort, FILE* csvFile, char* output_dir, char* directory_path,int counter){
 	args_sortFile *sortFileArgs = calloc(1, sizeof(args_sortFile));
@@ -87,14 +87,15 @@ args_sortFile * createThreadsSort(char* pathname, char* d_name, char* column_to_
 args_travelDirectory * createThreadsTraverse(char * output_dir, int counter, pthread_t* threadHolder, DIR * directory, char *directory_path, char* column_to_sort){
 	
 	args_travelDirectory* travelDirectoryArgs = (args_travelDirectory *)malloc(sizeof(args_travelDirectory));
-
 	travelDirectoryArgs->output_dir = output_dir;
 	travelDirectoryArgs->counter = counter;
 	travelDirectoryArgs->threadHolder = threadHolder;
 	travelDirectoryArgs->directory = directory;
 	travelDirectoryArgs->directory_path = directory_path;
-	travelDirectoryArgs->column_to_sort = (char*)(calloc(1,strlen(column_to_sort)));
-	strcpy(travelDirectoryArgs->column_to_sort,"director_name");
+	//travelDirectoryArgs->column_to_sort = (char*)(calloc(1,strlen(column_to_sort)));
+	travelDirectoryArgs->column_to_sort = (char *) malloc(strlen(column_to_sort) + 1);
+	strcpy(travelDirectoryArgs->column_to_sort, column_to_sort);
+	printf("the column to sort on is 4 %s \n",travelDirectoryArgs->column_to_sort);
 	//printf("The column to sort in travelDirectoryArgs is %s \n", travelDirectoryArgs->column_to_sort);
 
 	return travelDirectoryArgs;
@@ -109,7 +110,6 @@ void processFiletoSort(void* args){
 	args_sortFile* sortFileArgs = args;
 	//THOUGHTS: MAYBE OPEN THE CSVFILE HERE AND NOT IN TRAVDIR ????
 	printf("Thread %u is sorting the file: %s \n", pthread_self() ,sortFileArgs->directoryName);
-
 
 	//change path for accessing the csv file
 	char * csvFileOutputPath = malloc(sizeof(char)*512);
@@ -146,6 +146,8 @@ void processFiletoSort(void* args){
 	column_to_sort=sortFileArgs->column_to_sort;
 	//Push to the global stack of sorted files.
 	Row ** row1 = sortnew(sortFileArgs->csvFile, NULL, column_to_sort);
+	numRows2 += getNumberofRows();
+	printf("the total number of rows thus far are %d \n", numRows2);
 	push(StackOfSortedFiles, row1);
 
 	free(csvFileOutputPath);
@@ -157,6 +159,7 @@ void processFiletoSort(void* args){
 //open the directory and create threadholder
 int travdir(const char * input_dir_path, char* column_to_sort, const char * output_dir)
 {
+	numRows2 = 0;
 	char *directory_path = (char *) malloc(MAX_PATH_LENGTH);
 	strcpy(directory_path, input_dir_path);
 	
@@ -170,7 +173,6 @@ int travdir(const char * input_dir_path, char* column_to_sort, const char * outp
 	//have one thread go through directories
 	int numThreads = 20;
 	pthread_t* threadHolder = (pthread_t*)(malloc(sizeof(pthread_t) * numThreads));
-	
 	goThroughPath(createThreadsTraverse(output_dir, 0, threadHolder, directory, directory_path, column_to_sort));
 
 	return 0;
@@ -180,7 +182,6 @@ int travdir(const char * input_dir_path, char* column_to_sort, const char * outp
 //Arguments are set without a helper are are set in this function
 void goThroughPath(void* args){
 	args_travelDirectory* travelDirectoryArgs = args;
-
 	printf("This is a traversing thread with a TID: %u \n", pthread_self());
 	printf("This thread is searching though: %s\n", travelDirectoryArgs->directory_path);
 	//copy from struct to this function
@@ -235,7 +236,6 @@ void goThroughPath(void* args){
 				
 				pthread_t thread;
 				pthread_create(&thread, 0, goThroughPath, createThreadsTraverse(output_dir, 0, threadHolder, newDirectory, newDirectoryPath, column_to_sort));
-
 				travelDirectoryArgs->threadHolder[travelDirectoryArgs->counter++] = thread;
 			}
 		} 
@@ -296,7 +296,7 @@ void goThroughPath(void* args){
 		printf("\n");
 
 		Row ** sortedRows;
-		int *numRows;
+
 		while(!is_empty(StackOfSortedFiles)) {
 			printf("The stack has %d elements in it.\n", StackOfSortedFiles->count);
 			if(StackOfSortedFiles->count > 1) {
@@ -304,7 +304,7 @@ void goThroughPath(void* args){
 				Row ** row2 = pop(StackOfSortedFiles);
 				printf("Popping row1 from the stack, first movie has director_name: %s\n", row1[0]->colEntries[1].value);
 				printf("Popping row2 from the stack, first movie has director_name: %s\n", row2[0]->colEntries[1].value);
-				sortedRows = mergeRowsTwoFinger(row1, row2, numRows);
+				sortedRows = mergeRowsTwoFinger(row1, row2);
 				printf("Row1 and Row2 have been merged. The first director is: %s\tThe director is: %s\n", sortedRows[0]->colEntries[1].value,sortedRows[1]->colEntries[1].value);
 				push(StackOfSortedFiles, sortedRows);
 			} else if (StackOfSortedFiles->count == 1) {
@@ -338,8 +338,15 @@ void goThroughPath(void* args){
 
 		FILE *csvFileOut = fopen(csvFileOutputPath,"w");
 		
-		printToCSV(csvFileOut, sortedRows, *numRows, NUM_COLS);
+		printToCSV(csvFileOut, sortedRows, numRows2, NUM_COLS);
 
+		int getridofrows;
+		for (getridofrows=0; getridofrows<numRows2; getridofrows++) {
+		  free(sortedRows[getridofrows]);
+		}
+
+		free(sortedRows);
+		free(csvFileOutputPath);
 		fclose(csvFileOut);
 		exit(0);
 	}

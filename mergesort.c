@@ -4,7 +4,7 @@
 
 void mergeSort(Row ** rows, int l, int r);
 void merge(Row ** rows, int l, int m, int r);
-Row ** mergeRowsTwoFinger(Row ** row1, Row ** row2, int *numRows);
+Row ** mergeRowsTwoFinger(Row ** row1, Row ** row2);
 char *colType;
 int colIdx;
 long doCompare(Row *row1, Row *row2);
@@ -31,10 +31,9 @@ void mergeSort(Row **rows, int l, int r) {
         merge(rows, l, m, r);
     }
     
-    
 }
 
-Row ** mergeRowsTwoFinger(Row **row1, Row **row2, int *numRows) {
+Row ** mergeRowsTwoFinger(Row **row1, Row **row2) {
     /*
     algorithm merge(A, B) is
         inputs A, B : list
@@ -60,7 +59,7 @@ Row ** mergeRowsTwoFinger(Row **row1, Row **row2, int *numRows) {
         return C
     */
     int i = 0,j = 0,k = 0;
-    Row **sortedRows = (Row **) malloc(sizeof(Row **));
+    Row **sortedRows = (Row **) malloc(sizeof(Row **)* 8000);
 
     while(isValidType(row1[i]) != 0 && isValidType(row2[j]) != 0) {
         if (doCompare(row1[i], row2[j]) <= 0) {
@@ -88,7 +87,6 @@ Row ** mergeRowsTwoFinger(Row **row1, Row **row2, int *numRows) {
         j++;
         k++;
     }
-    *numRows = k;
     return sortedRows;
 }
 

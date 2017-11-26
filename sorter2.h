@@ -55,3 +55,4 @@ void goThroughPath(void* margs2);
 args_sortFile * createThreadsSort(char* pathname, char* d_name, char* column_to_sort, FILE* csvFile, char* output_dir, char* directory_path, int counter);
 args_travelDirectory * createThreadsTraverse(char * output_dir, int counter, pthread_t* threadHolder, DIR * directory, char *directory_path, char* column_to_sort);
 int isAlreadySorted(char *pathname,char *column_to_sort);
+

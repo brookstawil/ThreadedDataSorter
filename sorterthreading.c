@@ -69,9 +69,12 @@ const char* validColumnTypes[] = {
     "int"
 };
 
+int rowCountforFile;
+
 Row ** sortnew(FILE* csv_in, FILE* csv_out, char * columnToSort) {
     int i,j;
     int columnToSortIndex, validNumRows;
+    rowCountforFile = 0;
     int rowIndex = 0;
     char* columnToSortType;
     char* line = NULL;
@@ -147,8 +150,9 @@ Row ** sortnew(FILE* csv_in, FILE* csv_out, char * columnToSort) {
         rowIndex++;
     }
     validNumRows = rowIndex;
+    setNumberofRows(validNumRows);
 
-    //Implment the sorting and call here
+    //Implement the sorting and call here
     doSort(rows,columnToSortIndex,columnToSortType,validNumRows);
 
     //Print to a CSV file
@@ -170,8 +174,16 @@ void printToCSV(FILE *csv_out, Row ** rows, int validNumRows, int validNumCols) 
         for(j = 0; j < validNumCols-1; j++) {
             fprintf(csv_out, "%s,", rows[i]->colEntries[j].value);
         }
-        fprintf(csv_out, "%s\n", rows[i]->colEntries[j].value);        
+        fprintf(csv_out, "%s\n", rows[i]->colEntries[j].value);     
     } 
+}
+
+void setNumberofRows(int validNumRows){
+    rowCountforFile = validNumRows;
+}
+
+int getNumberofRows(){
+    return rowCountforFile;
 }
 
 //Returns index of valid column, if not valid return -1

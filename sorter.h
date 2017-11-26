@@ -13,3 +13,5 @@ char* findType(char* token);
 int isValidColumn(char* columnName);
 void printToCSV(FILE *csv_out, Row ** rows, int numRows, int numCols);
 Row ** sortnew(FILE *fp_in, FILE *fp_out, char * columnToSort);
+void setNumberofRows(int validNumRows);
+int getNumberofRows();
