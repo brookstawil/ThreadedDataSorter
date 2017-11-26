@@ -8,11 +8,14 @@
 #include <sys/types.h>
 #include "sorterthreading.c"
 #include "sorter2.h"
+#include "stack.c"
 
 #define MAX_PATH_LENGTH 256
 
 //the root is now an initial thread process
 pid_t root;
+pthread_t rootTID;
+stack_safe *StackOfSortedFiles;
 
 int main (int argc, char* argv[]) {
 	//check inputs 
@@ -21,6 +24,7 @@ int main (int argc, char* argv[]) {
 	char* output_dir="";
 
 	root = getpid();
+	rootTID = pthread_self();
 	printf("Initial PID: %d \n", root);
 
 	char *errorMessage = "The command line must specify a column to sort with arg -c \nfor example:\n./sorter -c  valid_column -d inputdir -o outputdir\n./sorter -c  valid_column -d inputdir\n./sorter -c  valid_column\n";
@@ -36,6 +40,11 @@ int main (int argc, char* argv[]) {
 			output_dir = argv[i+1];
 		}
 	}
+
+	StackOfSortedFiles = stack_create(30);
+	printf("Just after creation, is the stack empty? : %d\n", is_empty(StackOfSortedFiles));
+
+	//TODO: Move the code that determines the output_dir to over here
 
 	if(*column_to_sort==0){ 
 		printf("%s",errorMessage);
@@ -61,51 +70,6 @@ int main (int argc, char* argv[]) {
 	return 0;
 }
 
-//Takes in a thread argument structure, and uses that to retrieve all necessary information.
-void processFiletoSort(void* args){
-	args_sortFile* sortFileArgs = args;
-	//THOUGHTS: MAYBE OPEN THE CSVFILE HERE AND NOT IN TRAVDIR ????
-	printf("Thread %u is sorting the file: %s \n", pthread_self() ,sortFileArgs->directoryName);
-
-
-	//change path for accessing the csv file
-	char * csvFileOutputPath = malloc(sizeof(char)*512);
-	//Remove the ".csv" from d_name to insert "-sorted-VALIDCOLUMN.csv
-	char *file_name = (char *) malloc(strlen(sortFileArgs->directoryName) + 1);
-	strcpy(file_name, sortFileArgs->directoryName);					
-	char *lastdot = strrchr(file_name, '.');
-	if (lastdot != NULL) {
-		*lastdot = '\0';
-	}
-					
-	//Default behavior dumps files into input directory
-	if(sortFileArgs->output_dir == NULL) {
-		strcpy(csvFileOutputPath,sortFileArgs->directory_path);
-	} else { //If given an output directory
-		struct stat sb;
-		if (stat(sortFileArgs->output_dir, &sb) == -1) {
-			mkdir(sortFileArgs->output_dir, 0700); //RWX for owner
-		} 
-		strcpy(csvFileOutputPath,sortFileArgs->output_dir);
-	}
-
-	strcat(csvFileOutputPath,"/");
-	strcat(csvFileOutputPath,file_name);
-	strcat(csvFileOutputPath,"-sorted-");
-	strcat(csvFileOutputPath,sortFileArgs->column_to_sort);
-	strcat(csvFileOutputPath,".csv");
-
-	FILE *csvFileOut = fopen(csvFileOutputPath,"w");
-
-	//sort the csv file
-	char* column_to_sort="";
-	column_to_sort=sortFileArgs->column_to_sort;
-	sortnew(sortFileArgs->csvFile, csvFileOut, column_to_sort);
-	//free(csvFileOutputPath);
-	//free(file_name);
-
-	pthread_exit(NULL);
-}
 
 //Helper function that sets the arguments for a thread that sorts a given file
 args_sortFile * createThreadsSort(char* pathname, char* d_name, char* column_to_sort, FILE* csvFile, char* output_dir, char* directory_path,int counter){
@@ -130,10 +94,64 @@ args_travelDirectory * createThreadsTraverse(char * output_dir, int counter, pth
 	travelDirectoryArgs->directory = directory;
 	travelDirectoryArgs->directory_path = directory_path;
 	travelDirectoryArgs->column_to_sort = (char*)(calloc(1,strlen(column_to_sort)));
-	strcpy(travelDirectoryArgs->column_to_sort,"movie_title");
+	strcpy(travelDirectoryArgs->column_to_sort,"director_name");
 	//printf("The column to sort in travelDirectoryArgs is %s \n", travelDirectoryArgs->column_to_sort);
 
 	return travelDirectoryArgs;
+}
+
+args_sortedRowStackPop * createStackPop(Row ** row1, Row ** row2) {
+
+}
+
+//Takes in a thread argument structure, and uses that to retrieve all necessary information.
+void processFiletoSort(void* args){
+	args_sortFile* sortFileArgs = args;
+	//THOUGHTS: MAYBE OPEN THE CSVFILE HERE AND NOT IN TRAVDIR ????
+	printf("Thread %u is sorting the file: %s \n", pthread_self() ,sortFileArgs->directoryName);
+
+
+	//change path for accessing the csv file
+	char * csvFileOutputPath = malloc(sizeof(char)*512);
+	//Remove the ".csv" from d_name to insert "-sorted-VALIDCOLUMN.csv
+	char *file_name = (char *) malloc(strlen(sortFileArgs->directoryName) + 1);
+	strcpy(file_name, sortFileArgs->directoryName);					
+	char *lastdot = strrchr(file_name, '.');
+	if (lastdot != NULL) {
+		*lastdot = '\0';
+	}
+	
+	//TODO: Move this output file determination to before the threading even begins
+	//Default behavior dumps files into input directory
+	if(sortFileArgs->output_dir == NULL) {
+		strcpy(csvFileOutputPath,sortFileArgs->directory_path);
+	} else { //If given an output directory
+		struct stat sb;
+		if (stat(sortFileArgs->output_dir, &sb) == -1) {
+			mkdir(sortFileArgs->output_dir, 0700); //RWX for owner
+		} 
+		strcpy(csvFileOutputPath,sortFileArgs->output_dir);
+	}
+
+	strcat(csvFileOutputPath,"/");
+	strcat(csvFileOutputPath,file_name);
+	strcat(csvFileOutputPath,"-sorted-");
+	strcat(csvFileOutputPath,sortFileArgs->column_to_sort);
+	strcat(csvFileOutputPath,".csv");
+
+	//FILE *csvFileOut = fopen(csvFileOutputPath,"w");
+
+	//sort the csv file
+	char* column_to_sort="";
+	column_to_sort=sortFileArgs->column_to_sort;
+	//Push to the global stack of sorted files.
+	Row ** row1 = sortnew(sortFileArgs->csvFile, NULL, column_to_sort);
+	push(StackOfSortedFiles, row1);
+
+	free(csvFileOutputPath);
+	free(file_name);
+
+	pthread_exit(NULL);
 }
 
 //open the directory and create threadholder
@@ -265,18 +283,65 @@ void goThroughPath(void* args){
 	for(i = 0; i < travelDirectoryArgs->counter; i++){
 		pthread_join(travelDirectoryArgs->threadHolder[i], NULL);
 	}
-	
-	//while(totalthreads > 0){
-		//call pthread_join() to wait for other threads to terminate
-		//printf("TIDS of all child threads%d ", pthread_self());
-		//need to print out the thread ids somehow here too
-		//pthread_join(thread, NULL);
-		//--totalthreads;
-	//}
 
+	//Anything that occurs in this conditional will only be done by the root thread
+	//TODO: Parallelize poping from the stack
+	if(getpid() == root && pthread_self() == rootTID){
+		//This numebr is not correct yet and must be set to the sum of the children thread counts
+		printf("TOTAL number of threads: %d\n\r", travelDirectoryArgs->counter);
+		
+		//In this implementation we will pop and push from the stack once the threads have all completed
+		//While the stack is not empty, we pop twice and merge.
+		//If one of the Row ** that we pop is empty then we must have all of the rows merged together and can exit
+		printf("\n");
 
-	if(getpid() == root){
-		printf("\nTotal number of threads: %d\n\r", travelDirectoryArgs->counter);	
+		Row ** sortedRows;
+		int *numRows;
+		while(!is_empty(StackOfSortedFiles)) {
+			printf("The stack has %d elements in it.\n", StackOfSortedFiles->count);
+			if(StackOfSortedFiles->count > 1) {
+				Row ** row1 = pop(StackOfSortedFiles);
+				Row ** row2 = pop(StackOfSortedFiles);
+				printf("Popping row1 from the stack, first movie has director_name: %s\n", row1[0]->colEntries[1].value);
+				printf("Popping row2 from the stack, first movie has director_name: %s\n", row2[0]->colEntries[1].value);
+				sortedRows = mergeRowsTwoFinger(row1, row2, numRows);
+				printf("Row1 and Row2 have been merged. The first director is: %s\tThe director is: %s\n", sortedRows[0]->colEntries[1].value,sortedRows[1]->colEntries[1].value);
+				push(StackOfSortedFiles, sortedRows);
+			} else if (StackOfSortedFiles->count == 1) {
+				sortedRows = pop(StackOfSortedFiles);
+				printf("Popping row1 from the stack, first movie has director_name: %s\n", sortedRows[0]->colEntries[1].value);
+			}
+		}
+		printf("The stack is now empty. The rows are now stored in sortedRows.\n");
+
+		printf("The rows will not be printed to the masterCSV file.\n");
+
+		char * csvFileOutputPath = malloc(sizeof(char)*512);
+		
+		//TODO: Move this output file determination to before the threading even begins
+		//Default behavior dumps files into input directory
+		if(output_dir == NULL) {
+			strcpy(csvFileOutputPath, directory_path);
+		} else { //If given an output directory
+			struct stat sb;
+			if (stat(output_dir, &sb) == -1) {
+				mkdir(output_dir, 0700); //RWX for owner
+			} 
+			strcpy(csvFileOutputPath,output_dir);
+		}
+
+		strcat(csvFileOutputPath,"/");
+		strcat(csvFileOutputPath,"masterCSV");
+		strcat(csvFileOutputPath,"-sorted-");
+		strcat(csvFileOutputPath,column_to_sort);
+		strcat(csvFileOutputPath,".csv");
+
+		FILE *csvFileOut = fopen(csvFileOutputPath,"w");
+		
+		printToCSV(csvFileOut, sortedRows, *numRows, NUM_COLS);
+
+		fclose(csvFileOut);
+		exit(0);
 	}
 
 	pthread_exit(NULL);

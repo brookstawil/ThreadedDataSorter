@@ -18,7 +18,7 @@ struct stat {
 };
 
 //arguments for processfiletosort
-//Each thread allocates memory for these arguments, and are used throughout the sorting process.\
+//Each thread allocates memory for these arguments, and are used throughout the sorting process.
 //These arguments are used by the fileSorting threads
 typedef struct threadArg{
 	char* pathName;
@@ -40,6 +40,14 @@ typedef struct threadArg2{
 	pthread_t* threadHolder;
 	char* output_dir;
 } args_travelDirectory;
+
+//arguments for stackPoping
+//Each thread allocates memory for these arguments, and are used when poping sorted rows from the stack
+//These arguments are used by the fileSorting threads
+typedef struct threadArg3{
+    Row ** row1;
+    Row ** row2;
+} args_sortedRowStackPop;
 
 int travdir(const char * input_dir_path, char* column_to_sort, const char * output_dir);
 void processFiletoSort(void* margs);

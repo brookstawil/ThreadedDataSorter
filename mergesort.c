@@ -4,9 +4,11 @@
 
 void mergeSort(Row ** rows, int l, int r);
 void merge(Row ** rows, int l, int m, int r);
+Row ** mergeRowsTwoFinger(Row ** row1, Row ** row2, int *numRows);
 char *colType;
 int colIdx;
 long doCompare(Row *row1, Row *row2);
+int isValidType(Row *row);
 
 int doSort(Row ** rows, int sortColIdx, char * sortColType, int arrSize){
     colIdx = sortColIdx;
@@ -32,6 +34,73 @@ void mergeSort(Row **rows, int l, int r) {
     
 }
 
+Row ** mergeRowsTwoFinger(Row **row1, Row **row2, int *numRows) {
+    /*
+    algorithm merge(A, B) is
+        inputs A, B : list
+        returns list
+
+        C := new empty list
+        while A is not empty and B is not empty do
+            if head(A) ≤ head(B) then
+                append head(A) to C
+                drop the head of A
+            else
+                append head(B) to C
+                drop the head of B
+
+        // By now, either A or B is empty. It remains to empty the other input list.
+        while A is not empty do
+            append head(A) to C
+            drop the head of A
+        while B is not empty do
+            append head(B) to C
+            drop the head of B
+
+        return C
+    */
+    int i = 0,j = 0,k = 0;
+    Row **sortedRows = (Row **) malloc(sizeof(Row **));
+
+    while(isValidType(row1[i]) != 0 && isValidType(row2[j]) != 0) {
+        if (doCompare(row1[i], row2[j]) <= 0) {
+            sortedRows[k] = (Row *)malloc(sizeof(row1[i]));
+            sortedRows[k] = row1[i];
+            i++;
+        } else {
+            sortedRows[k] = (Row *)malloc(sizeof(row2[j]));
+            sortedRows[k] = row2[j];
+            j++;
+        }
+        k++;
+    }
+
+    while(isValidType(row1[i]) != 0) {
+        sortedRows[k] = (Row *)malloc(sizeof(row1[i]));    
+        sortedRows[k] = row1[i];
+        i++;
+        k++;
+    }
+
+    while(isValidType(row2[j]) != 0) {
+        sortedRows[k] = (Row *)malloc(sizeof(row2[j]));
+        sortedRows[k] = row2[j];
+        j++;
+        k++;
+    }
+    *numRows = k;
+    return sortedRows;
+}
+
+int isValidType(Row *row) {
+    if(row == NULL || row->colEntries[colIdx].type == NULL || strcmp(row->colEntries[colIdx].type,colType) != 0) {
+        return 0;
+    } else {
+        return 1;
+    }
+
+}
+
 void merge(Row **row, int left, int mid, int right) {
 	int i,j,k;
     int n1 = mid - left + 1;
@@ -45,7 +114,7 @@ void merge(Row **row, int left, int mid, int right) {
 		L[i] = row[left + i];	
 	}
     for (j = 0; j < n2; j++) {
-		R[j] = row[mid + 1+ j];
+		R[j] = row[mid + 1 + j];
 	}
         
 	i = 0;
@@ -68,7 +137,6 @@ void merge(Row **row, int left, int mid, int right) {
         k++;
     }
     
-    
     while (j < n2) {
         row[k] = R[j];
         j++;
@@ -81,7 +149,7 @@ void merge(Row **row, int left, int mid, int right) {
 long doCompare(Row *row1, Row *row2) {
     const char* r1Value = (row1->colEntries)[colIdx].value;
     const char* r2Value = (row2->colEntries)[colIdx].value;
-    
+
     if (strcmp(colType, "char") == 0) {
 		//Skip the quotes
         if (*r1Value == '"') {
