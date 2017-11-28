@@ -4,8 +4,9 @@
 #include "mergesort.c"
 
 #define NUM_COLS 28 //Code works for 28 columns
-#define NUM_ROWS 8192 //Max number of rows in a file is 8192
+#define NUM_ROWS 1000 //Max number of rows in a file is 8192
 #define MAX_ENTRY_SIZE 256
+#define HEADER_LINE "color,director_name,num_critic_for_reviews,duration,director_facebook_likes,actor_3_facebook_likes,actor_2_name,actor_1_facebook_likes,gross,genres,actor_1_name,movie_title,num_voted_users,cast_total_facebook_likes,actor_3_name,facenumber_in_poster,plot_keywords,movie_imdb_link,num_user_for_reviews,language,country,content_rating,budget,title_year,actor_2_facebook_likes,imdb_score,aspect_ratio,movie_facebook_likes\n"
 
 const char* validColumns[] = {
     "color",
@@ -71,15 +72,15 @@ const char* validColumnTypes[] = {
 
 int rowCountforFile;
 
-Row ** sortnew(FILE* csv_in, FILE* csv_out, char * columnToSort) {
+Row ** sortnew(FILE* csv_in, char * columnToSort) {
     int i,j;
     int columnToSortIndex, validNumRows;
     rowCountforFile = 0;
     int rowIndex = 0;
     char* columnToSortType;
     char* line = NULL;
-    char* token, *tokenType, *headerLine;            
-    size_t size = 128;    
+    char* token, *tokenType;            
+    size_t size = 0;    
     //Allocate space for number of rows in file
     Row ** rows = (Row **)malloc(sizeof(Row **) * NUM_ROWS);
 
@@ -96,12 +97,8 @@ Row ** sortnew(FILE* csv_in, FILE* csv_out, char * columnToSort) {
         printf("NULL FILE");
     }
     //Skip first row
-    char * input;
-    line = (char *)malloc(1024 * sizeof(char));
     getline(&line, &size, csv_in);
     
-    headerLine = (char *) malloc(strlen(line));
-    strcpy(headerLine,line);
     if(NULL == csv_in){
         printf("NULL FILE");
     }
@@ -148,7 +145,9 @@ Row ** sortnew(FILE* csv_in, FILE* csv_out, char * columnToSort) {
             colIndex++;
         }
         rowIndex++;
+        free(line);
     }
+
     validNumRows = rowIndex;
     setNumberofRows(validNumRows);
 
@@ -167,6 +166,9 @@ Row ** sortnew(FILE* csv_in, FILE* csv_out, char * columnToSort) {
 }
 
 void printToCSV(FILE *csv_out, Row ** rows, int validNumRows, int validNumCols) {
+    //Print the header line.
+    fprintf(csv_out, HEADER_LINE);
+
     int i,j;
     //Loop through the rows
     for (i = 0; i < validNumRows; i++) {
