@@ -4,7 +4,7 @@ typedef struct rowEntry {
 } rowEntry;
 
 typedef struct Row {
-    struct rowEntry colEntries[28];
+    struct rowEntry* colEntries;
 } Row;
 
 size_t parseline(char** lineptr, size_t *n, FILE *stream);

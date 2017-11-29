@@ -159,14 +159,14 @@ long doCompare(Row *row1, Row *row2) {
     }
     if(r1Value == NULL || strcmp(r1Value,"")==0){
         r1Value == "<NULL>";
-        return strcmp("<NULL>",r2Value);
+        //return strcmp("<NULL>",r2Value);
+        return 1;
     }
     if(r2Value == NULL || strcmp(r2Value,"")==0){
         r2Value == "<NULL>";
-        return strcmp("<NULL>",r1Value);
+        //return strcmp("<NULL>",r1Value);
+        return 1;
     }
-    //printf("r1Value %s \n " ,r1Value);
-    //printf("r2Value %s \n ", r2Value);
 
     if (strcmp(colType, "char") == 0) {
         if (*r1Value == '"') {

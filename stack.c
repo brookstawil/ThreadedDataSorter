@@ -16,7 +16,7 @@ stack_safe* stack_create(int capacity) {
 }
 
 void stack_destroy(stack_safe *s) {
-  free(s->rows);
+  //free(s->rows);
   pthread_mutex_destroy(&s->m);
   free(s);
 }
