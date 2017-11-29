@@ -113,9 +113,7 @@ void merge(Row **row, int left, int mid, int right) {
     int n1 = mid - left + 1;
     int n2 =  right - mid;
     
-    
     Row *L[n1], *R[n2];
-    
     
     for (i = 0; i < n1; i++) {
 		L[i] = row[left + i];	
@@ -156,6 +154,19 @@ void merge(Row **row, int left, int mid, int right) {
 long doCompare(Row *row1, Row *row2) {
     const char* r1Value = (row1->colEntries)[colIdx].value;
     const char* r2Value = (row2->colEntries)[colIdx].value;
+    if(r1Value == NULL && r2Value == NULL){
+        return 0;
+    }
+    if(r1Value == NULL || strcmp(r1Value,"")==0){
+        r1Value == "<NULL>";
+        return strcmp("<NULL>",r2Value);
+    }
+    if(r2Value == NULL || strcmp(r2Value,"")==0){
+        r2Value == "<NULL>";
+        return strcmp("<NULL>",r1Value);
+    }
+    //printf("r1Value %s \n " ,r1Value);
+    //printf("r2Value %s \n ", r2Value);
 
     if (strcmp(colType, "char") == 0) {
         if (*r1Value == '"') {

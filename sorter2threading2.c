@@ -133,41 +133,21 @@ void processFiletoSort(void* args){
 	if (lastdot != NULL) {
 		*lastdot = '\0';
 	}
-	
-	//TODO: Move this output file determination to before the threading even begins
-	//Default behavior dumps files into input directory
-	/*if(sortFileArgs->output_dir == NULL) {
-		strcpy(csvFileOutputPath,sortFileArgs->directory_path);
-	} else { //If given an output directory
-		struct stat sb;
-		if (stat(sortFileArgs->output_dir, &sb) == -1) {
-			mkdir(sortFileArgs->output_dir, 0700); //RWX for owner
-		} 
-		strcpy(csvFileOutputPath,sortFileArgs->output_dir);
-	}
 
-	strcat(csvFileOutputPath,"/");
-	strcat(csvFileOutputPath,file_name);
-	strcat(csvFileOutputPath,"-sorted-");
-	strcat(csvFileOutputPath,sortFileArgs->column_to_sort);
-	strcat(csvFileOutputPath,".csv");
-
-	FILE *csvFileOut = fopen(csvFileOutputPath,"w");
-
-	*/
 	//sort the csv file
 	//Push to the global stack of sorted files.
-	Row **rowSet;
+	//Row **rowSet;
 	
-	Row **tempRows = malloc(sizeof(Row **) * NUM_ROWS);
-    if(tempRows != NULL) {
-        rowSet = tempRows;
-    } else {
+	Row **tempRows = malloc(sizeof(struct Row*) * NUM_ROWS);
+	printf("number of rows %d \n", NUM_ROWS);
+    //if(tempRows != NULL) {
+        //rowSet = tempRows;
+    //} else {
 
-    }
-	sortnew(rowSet, sortFileArgs->csvFile, global_column_to_sort);
+    //}
+	sortnew(tempRows, sortFileArgs->csvFile, global_column_to_sort);
 	
-	push(StackOfSortedFiles, rowSet);
+	push(StackOfSortedFiles, tempRows);
 
 	free(file_name);
 

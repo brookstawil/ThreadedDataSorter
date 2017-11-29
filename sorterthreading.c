@@ -77,9 +77,9 @@ void sortnew(Row ** rowSet, FILE* csv_in, char * columnToSort) {
     int columnToSortIndex, validNumRows;
     rowCountforFile = 0;
     int rowIndex = 0;
-    char* columnToSortType;
+    char* columnToSortType=NULL;
     char* line = NULL;
-    char* token, *tokenType;            
+    char* token = NULL, *tokenType=NULL;            
     size_t size = 128;    
 
     //Get index of the column we want to sort by
@@ -107,7 +107,7 @@ void sortnew(Row ** rowSet, FILE* csv_in, char * columnToSort) {
         getline(&line, &size, csv_in);  
 
         //Begining of a new row starts here
-        Row *tempRow = malloc(sizeof(Row) * 1000);
+        Row *tempRow = malloc(sizeof(struct Row)*28);
         if(tempRow != NULL) {
             rowSet[rowIndex] = tempRow;
         } else {
@@ -121,20 +121,31 @@ void sortnew(Row ** rowSet, FILE* csv_in, char * columnToSort) {
         tokenType = findType(token, colIdx);
 
         //Set the values in the rows matrix
+        if(token==NULL || strcmp(token,"")==0){
+                    token="<NULL>";
+        }  
+        if(tokenType==NULL || strcmp(tokenType,"")==0){
+                    tokenType="<NULL>";
+        }  
         char *tmp = malloc(strlen(token) + 1);
         if (tmp != NULL) {
             rowSet[rowIndex]->colEntries[colIndex].value = tmp;
             strcpy(rowSet[rowIndex]->colEntries[colIndex].value, token);
+            //printf("row value '%s' \n", rowSet[rowIndex]->colEntries[colIndex].value);
         } else {
-
+            printf("FAILURE on first tmp\n");
         }
 
         char *tmpType = malloc(strlen(tokenType) + 1);
         if( tmpType != NULL) {
             rowSet[rowIndex]->colEntries[colIndex].type = tmpType;
             strcpy(rowSet[rowIndex]->colEntries[colIndex].type, tokenType);
+            //if(rowSet[rowIndex]->colEntries[colIndex].type==NULL || strcmp(rowSet[rowIndex]->colEntries[colIndex].type,"")==0){
+                    //rowSet[rowIndex]->colEntries[colIndex].type="<NULL>";
+                //}
+            //printf("row type '%s' \n", rowSet[rowIndex]->colEntries[colIndex].type);
         } else {
-            
+            printf("FAILURE on first tmptype\n");
         }
         colIndex++;
                 
@@ -147,22 +158,36 @@ void sortnew(Row ** rowSet, FILE* csv_in, char * columnToSort) {
                 break;
             
             tokenType = findType(token, colIdx);
+            if(token==NULL || strcmp(token,"")==0){
+                    token="<NULL>";
+            }  
+            if(tokenType==NULL || strcmp(tokenType,"")==0){
+                        tokenType="<NULL>";
+            } 
             //Set the values in the rowSet matrix
 
             char *tmp2 = malloc(strlen(token) + 1);
             if (tmp2 != NULL) {
                 rowSet[rowIndex]->colEntries[colIndex].value = tmp2;
                 strcpy(rowSet[rowIndex]->colEntries[colIndex].value, token);
+               // if(rowSet[rowIndex]->colEntries[colIndex].value==NULL || strcmp(rowSet[rowIndex]->colEntries[colIndex].value,"")==0){
+                    //rowSet[rowIndex]->colEntries[colIndex].value="<NULL>";
+                //}
+                //printf("row value '%s' \n", rowSet[rowIndex]->colEntries[colIndex].value);
             } else {
-
+                printf("FAILURE on temp\n");
             }
 
             char *tmpType2 = malloc(strlen(tokenType) + 1);
             if(tmpType2 != NULL) {
                 rowSet[rowIndex]->colEntries[colIndex].type = tmpType2;
                 strcpy(rowSet[rowIndex]->colEntries[colIndex].type, tokenType);
+                //if(rowSet[rowIndex]->colEntries[colIndex].type==NULL || strcmp(rowSet[rowIndex]->colEntries[colIndex].type,"")==0){
+                    //rowSet[rowIndex]->colEntries[colIndex].type="<NULL>";
+                //}
+                //printf("row type '%s' \n", rowSet[rowIndex]->colEntries[colIndex].type);
             } else {
-                
+                printf("FAILURE on tempType\n");
             }
             colIndex++;
         }
