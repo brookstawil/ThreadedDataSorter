@@ -4,9 +4,9 @@
 #include "mergesort.c"
 
 #define NUM_COLS 28 //Code works for 28 columns
-#define NUM_ROWS 1000 //Max number of rows in a file is 8192
-#define MAX_ENTRY_SIZE 256
+#define NUM_ROWS 8192 //Max number of rows in a file is 8192
 #define HEADER_LINE "color,director_name,num_critic_for_reviews,duration,director_facebook_likes,actor_3_facebook_likes,actor_2_name,actor_1_facebook_likes,gross,genres,actor_1_name,movie_title,num_voted_users,cast_total_facebook_likes,actor_3_name,facenumber_in_poster,plot_keywords,movie_imdb_link,num_user_for_reviews,language,country,content_rating,budget,title_year,actor_2_facebook_likes,imdb_score,aspect_ratio,movie_facebook_likes\n"
+#define DELIMITERS ",\r\n"
 
 const char* validColumns[] = {
     "color",
@@ -72,7 +72,7 @@ const char* validColumnTypes[] = {
 
 int rowCountforFile;
 
-Row ** sortnew(FILE* csv_in, char * columnToSort) {
+void sortnew(Row ** rowSet, FILE* csv_in, char * columnToSort) {
     int i,j;
     int columnToSortIndex, validNumRows;
     rowCountforFile = 0;
@@ -81,8 +81,6 @@ Row ** sortnew(FILE* csv_in, char * columnToSort) {
     char* line = NULL;
     char* token, *tokenType;            
     size_t size = 0;    
-    //Allocate space for number of rows in file
-    Row ** rows = (Row **)malloc(sizeof(Row **) * NUM_ROWS);
 
     //Get index of the column we want to sort by
     columnToSortIndex = isValidColumn(columnToSort);
@@ -98,10 +96,6 @@ Row ** sortnew(FILE* csv_in, char * columnToSort) {
     }
     //Skip first row
     getline(&line, &size, csv_in);
-    
-    if(NULL == csv_in){
-        printf("NULL FILE");
-    }
 
     int c;
     while(!feof(csv_in)) {
@@ -112,7 +106,12 @@ Row ** sortnew(FILE* csv_in, char * columnToSort) {
         getline(&line, &size, csv_in);  
 
         //Begining of a new row starts here
-        rows[rowIndex] = malloc(sizeof(Row));
+        Row *tempRow = malloc(sizeof(Row) * 3);
+        if(tempRow != NULL) {
+            rowSet[rowIndex] = tempRow;
+        } else {
+
+        }
         
         //Gets first column
         token = strtok_single(line, ",\n");
@@ -121,27 +120,49 @@ Row ** sortnew(FILE* csv_in, char * columnToSort) {
         tokenType = findType(token);
 
         //Set the values in the rows matrix
-        rows[rowIndex]->colEntries[colIndex].value = (char *) malloc(strlen(token) + 1);
-        strcpy(rows[rowIndex]->colEntries[colIndex].value, token);
-        rows[rowIndex]->colEntries[colIndex].type = (char *) malloc(strlen(tokenType) + 1);
-        strcpy(rows[rowIndex]->colEntries[colIndex].type, tokenType);
+        char *tmp = malloc(strlen(token) + 1);
+        if (tmp != NULL) {
+            rowSet[rowIndex]->colEntries[colIndex].value = tmp;
+            strcpy(rowSet[rowIndex]->colEntries[colIndex].value, token);
+        } else {
+
+        }
+
+        char *tmpType = malloc(strlen(tokenType) + 1);
+        if( tmpType != NULL) {
+            rowSet[rowIndex]->colEntries[colIndex].type = tmpType;
+            strcpy(rowSet[rowIndex]->colEntries[colIndex].type, tokenType);
+        } else {
+            
+        }
         colIndex++;
                 
         while(token) {
             //Tokenizes the string based on ','
             //Starts from first column onward until end
             //If the first character in the line is a " then we tokenize based on the quotation mark
-            token = strtok_single(NULL, ",\r\n");
+            token = strtok_single(NULL, DELIMITERS);
             if(!token)
                 break;
             
             tokenType = findType(token);
-            //Set the values in the rows matrix
-            rows[rowIndex]->colEntries[colIndex].value = (char *) malloc(strlen(token) + 1);
-            strcpy(rows[rowIndex]->colEntries[colIndex].value, token);            
-            rows[rowIndex]->colEntries[colIndex].type = (char *) malloc(strlen(tokenType) + 1);
-            strcpy(rows[rowIndex]->colEntries[colIndex].type, tokenType);
+            //Set the values in the rowSet matrix
 
+            char *tmp2 = malloc(strlen(token) + 1);
+            if (tmp2 != NULL) {
+                rowSet[rowIndex]->colEntries[colIndex].value = tmp2;
+                strcpy(rowSet[rowIndex]->colEntries[colIndex].value, token);
+            } else {
+
+            }
+
+            char *tmpType2 = malloc(strlen(tokenType) + 1);
+            if(tmpType2 != NULL) {
+                rowSet[rowIndex]->colEntries[colIndex].type = tmpType2;
+                strcpy(rowSet[rowIndex]->colEntries[colIndex].type, tokenType);
+            } else {
+                
+            }
             colIndex++;
         }
         rowIndex++;
@@ -152,32 +173,43 @@ Row ** sortnew(FILE* csv_in, char * columnToSort) {
     setNumberofRows(validNumRows);
 
     //Implement the sorting and call here
-    doSort(rows,columnToSortIndex,columnToSortType,validNumRows);
+    doSort(rowSet,columnToSortIndex,columnToSortType,validNumRows);
 
     //Print to a CSV file
     //fprintf(csv_out, headerLine);
-    //printToCSV(csv_out, rows, validNumRows, NUM_COLS);
+    //printToCSV(csv_out, rowSet, validNumRows, NUM_COLS);
 
     //fclose(csv_out);
     fclose(csv_in);
         
-    return rows;
- //end of function
+    return;
+    //end of function
 }
 
 void printToCSV(FILE *csv_out, Row ** rows, int validNumRows, int validNumCols) {
     //Print the header line.
     fprintf(csv_out, HEADER_LINE);
 
-    int i,j;
+    int i=0,j=0;
     //Loop through the rows
     for (i = 0; i < validNumRows; i++) {
         //Loop through the columns
         for(j = 0; j < validNumCols-1; j++) {
-            fprintf(csv_out, "%s,", rows[i]->colEntries[j].value);
+            if(rows[i]->colEntries != NULL) {
+                fprintf(csv_out, "%s,", rows[i]->colEntries[j].value);
+            } else {
+                fprintf(csv_out, "<NULL>,");
+            }
         }
-        fprintf(csv_out, "%s\n", rows[i]->colEntries[j].value);     
+
+        if(rows[i]->colEntries != NULL) {
+            fprintf(csv_out, "%s\n", rows[i]->colEntries[j].value);
+        } else {
+            fprintf(csv_out, "<NULL>\n");
+        }
     } 
+
+    fclose(csv_out);
 }
 
 void setNumberofRows(int validNumRows){
@@ -222,11 +254,13 @@ char * findType(char* token) {
 //Tokenize a given input based on a delimiter, returns NULL if consecutive delimiters
 char* strtok_single (char * string, char const * delimiter) {
     static char *source = NULL;
-    char *p, *result = 0;
+    char *p = NULL, *result = 0;
     if(string != NULL)         source = string;
     if(source == NULL)         return NULL;
- 
-    if((p = strpbrk (source, delimiter)) != NULL) {
+    
+    p = strpbrk(source, delimiter);
+
+    if(p != NULL) {
         char *s = p+1;
         if(*(s) == '"') { //Enountered a movie title that has commas in it
             while(*(s+1) != '"') { //Go through util the next " and replace the commas with ;

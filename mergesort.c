@@ -7,7 +7,8 @@
 
 void mergeSort(Row ** rows, int l, int r);
 void merge(Row ** rows, int l, int m, int r);
-Row ** mergeRowsTwoFinger(Row ** row1, Row ** row2, int *row1Length, int *row2Length);
+void mergeRowsTwoFinger(Row **sortedRows, Row ** row1, Row ** row2);
+int getAmountOfRows(Row **rowSet1);
 char *colType;
 int colIdx;
 long doCompare(Row *row1, Row *row2);
@@ -36,7 +37,15 @@ void mergeSort(Row **rows, int l, int r) {
     
 }
 
-Row ** mergeRowsTwoFinger(Row **row1, Row **row2, int *row1Length, int *row2Length) {
+int getAmountOfRows(Row **rowSet1) {
+    int k = 0;
+    while(isValidType(rowSet1[k]) != 0) {
+        k++;
+    }
+    return k;
+}
+
+void mergeRowsTwoFinger(Row **sortedRows, Row **row1, Row **row2) {
     /*
     algorithm merge(A, B) is
         inputs A, B : list
@@ -63,15 +72,12 @@ Row ** mergeRowsTwoFinger(Row **row1, Row **row2, int *row1Length, int *row2Leng
     */
     int i = 0,j = 0,k = 0;
     int a, b;
-    Row **sortedRows = (Row **) malloc(sizeof(Row **) * NUM_ROWS);
 
     while(isValidType(row1[i]) != 0 && isValidType(row2[j]) != 0) {
         if (doCompare(row1[i], row2[j]) <= 0) {
-            sortedRows[k] = (Row *)malloc(sizeof(row1[i]));
             sortedRows[k] = row1[i];
             i++;
         } else {
-            sortedRows[k] = (Row *)malloc(sizeof(row2[j]));
             sortedRows[k] = row2[j];
             j++;
         }
@@ -79,26 +85,22 @@ Row ** mergeRowsTwoFinger(Row **row1, Row **row2, int *row1Length, int *row2Leng
     }
 
     while(isValidType(row1[i]) != 0) {
-        sortedRows[k] = (Row *)malloc(sizeof(row1[i]));    
         sortedRows[k] = row1[i];
         i++;
         k++;
     }
 
     while(isValidType(row2[j]) != 0) {
-        sortedRows[k] = (Row *)malloc(sizeof(row2[j]));
         sortedRows[k] = row2[j];
         j++;
         k++;
     }
 
-    *row1Length = i;
-    *row2Length = j;
-    return sortedRows;
+    return;
 }
 
 int isValidType(Row *row) {
-    if(row == NULL || row->colEntries[colIdx].type == NULL || strcmp(row->colEntries[colIdx].type,colType) != 0) {
+    if(row == NULL || row->colEntries[colIdx].type == NULL ) {
         return 0;
     } else {
         return 1;
@@ -156,7 +158,6 @@ long doCompare(Row *row1, Row *row2) {
     const char* r2Value = (row2->colEntries)[colIdx].value;
 
     if (strcmp(colType, "char") == 0) {
-        //Skip the quotes
         if (*r1Value == '"') {
             r1Value++;
         }

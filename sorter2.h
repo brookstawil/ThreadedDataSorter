@@ -25,7 +25,6 @@ typedef struct threadArg{
 	char* directoryName;
 	FILE* csvFile;
 	char* directory_path;
-	char* column_to_sort;
 	char* output_dir;
 	int counter;
 } args_sortFile;
@@ -35,7 +34,6 @@ typedef struct threadArg{
 typedef struct threadArg2{
 	DIR* directory;
 	char* directory_path;
-	char* column_to_sort;
 	int counter;
 	pthread_t* threadHolder;
 	char* output_dir;
@@ -52,7 +50,7 @@ typedef struct threadArg3{
 int travdir(const char * input_dir_path, char* column_to_sort, const char * output_dir);
 void processFiletoSort(void* margs);
 void goThroughPath(void* margs2);
-args_sortFile * createThreadsSort(char* pathname, char* d_name, char* column_to_sort, FILE* csvFile, char* output_dir, char* directory_path, int counter);
-args_travelDirectory * createThreadsTraverse(char * output_dir, int counter, pthread_t* threadHolder, DIR * directory, char *directory_path, char* column_to_sort);
+args_sortFile * createThreadsSort(char* pathname, char* d_name, FILE* csvFile, char* output_dir, char* directory_path, int counter);
+args_travelDirectory * createThreadsTraverse(char * output_dir, int counter, pthread_t* threadHolder, DIR * directory, char *directory_path);
 int isAlreadySorted(char *pathname,char *column_to_sort);
 

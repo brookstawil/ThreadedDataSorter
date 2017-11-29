@@ -20,7 +20,6 @@ void stack_destroy(stack_safe *s) {
   pthread_mutex_destroy(&s->m);
   free(s);
 }
-// Warning no underflow or overflow checks!
 
 void push(stack_safe *s, Row ** row) { 
   pthread_mutex_lock(&s->m); 

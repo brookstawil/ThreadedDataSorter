@@ -44,14 +44,19 @@ int main (int argc, char* argv[]) {
 		}
 	}
 
+	if(global_column_to_sort == NULL) {
+		printf("ERROR: No input column specified. Column to sort must be given with argument tag '-c'.\n");
+		exit(0);
+	}
+
 	if(global_starting_dir == NULL) {
 		printf("Staring directory not specified, defaulting to './' as the global_starting_dir.\n");
-		global_starting_dir = "./";
+		global_starting_dir = ".";
 	}
 
 	if(global_output_dir == NULL) {
 		printf("Output directory not specified, defaulting to './' as the global_output_dir.\n");
-		global_output_dir = "./"; //Will either be a valid global_starting_dir or ./ at this point in code
+		global_output_dir = "."; //Will either be a valid global_starting_dir or ./ at this point in code
 	}
 
 	/*if(output_dir == NULL){
@@ -87,27 +92,24 @@ int main (int argc, char* argv[]) {
 }
 
 //Helper function that sets the arguments for a thread that sorts a given file
-args_sortFile * createThreadsSort(char* pathname, char* d_name, char* column_to_sort, FILE* csvFile, char* output_dir, char* directory_path,int counter){
+args_sortFile * createThreadsSort(char* pathname, char* d_name, FILE* csvFile, char* output_dir, char* directory_path,int counter){
 	args_sortFile *sortFileArgs = calloc(1, sizeof(args_sortFile));
 	sortFileArgs->pathName = pathname;
 	sortFileArgs->directoryName = d_name;
 	sortFileArgs->csvFile = csvFile;
-	sortFileArgs->column_to_sort=column_to_sort;
 	sortFileArgs->directory_path = directory_path;
 	sortFileArgs->output_dir = output_dir;
 	sortFileArgs->counter = counter;
 	return sortFileArgs;
 }
 
-args_travelDirectory * createThreadsTraverse(char * output_dir, int counter, pthread_t* threadHolder, DIR * directory, char *directory_path, char* column_to_sort){
+args_travelDirectory * createThreadsTraverse(char * output_dir, int counter, pthread_t* threadHolder, DIR * directory, char *directory_path){
 	args_travelDirectory* travelDirectoryArgs = (args_travelDirectory *)malloc(sizeof(args_travelDirectory));
 	travelDirectoryArgs->output_dir = output_dir;
 	travelDirectoryArgs->counter = counter;
 	travelDirectoryArgs->threadHolder = threadHolder;
 	travelDirectoryArgs->directory = directory;
 	travelDirectoryArgs->directory_path = directory_path;
-	travelDirectoryArgs->column_to_sort = (char *) malloc(strlen(column_to_sort) + 1);
-	strcpy(travelDirectoryArgs->column_to_sort, column_to_sort);
 
 	return travelDirectoryArgs;
 }
@@ -158,9 +160,17 @@ void processFiletoSort(void* args){
 	*/
 	//sort the csv file
 	//Push to the global stack of sorted files.
-	push(StackOfSortedFiles, sortnew(sortFileArgs->csvFile, global_column_to_sort));
-	numRows2 += getNumberofRows();
-	//printf("the total number of rows thus far are %d \n", numRows2);
+	Row **rowSet;
+	
+	Row **tempRows = malloc(sizeof(Row **) * NUM_ROWS);
+    if(tempRows != NULL) {
+        rowSet = tempRows;
+    } else {
+
+    }
+	sortnew(rowSet, sortFileArgs->csvFile, global_column_to_sort);
+	
+	push(StackOfSortedFiles, rowSet);
 
 	free(file_name);
 
@@ -186,7 +196,7 @@ int travdir(const char * input_dir_path, char* column_to_sort, const char * outp
 	counterofthreads = 0;
 	pthread_t* threadHolder = (pthread_t*)(malloc(sizeof(pthread_t) * numThreads));
 	threadIds = (pthread_t*)(malloc(sizeof(pthread_t) * numThreads));
-	goThroughPath(createThreadsTraverse(output_dir, 0, threadHolder, directory, directory_path, column_to_sort));
+	goThroughPath(createThreadsTraverse(output_dir, counterofthreads, threadHolder, directory, directory_path));
 
 	free(directory_path);
 	return 0;
@@ -199,13 +209,13 @@ void goThroughPath(void* args){
 	printf("This is a traversing thread with a TID: %u \n", pthread_self());
 	//printf("This thread is searching though: %s\n", travelDirectoryArgs->directory_path);
 	//copy from struct to this function
-	char* column_to_sort = travelDirectoryArgs->column_to_sort;
 	//printf("The column to sort is %s \n", column_to_sort);
 	DIR* directory = travelDirectoryArgs->directory;
 	char* directory_path = travelDirectoryArgs->directory_path;
 	char* output_dir = global_output_dir;
 	pthread_t* threadHolder = travelDirectoryArgs->threadHolder;
 	char* finalDirectoryPath;
+	int counterofthreads = travelDirectoryArgs->counter;
 
 	//while we go through the directory -> in the parent process keep looking for csv files
 	while(directory != NULL) {
@@ -247,7 +257,7 @@ void goThroughPath(void* args){
 				//This requires updating the counter of the parent directory, as well as adding the thread to the threadholder
 				pthread_t thread;
 				counterofthreads++;
-				pthread_create(&thread, 0, goThroughPath, createThreadsTraverse(output_dir, 0, threadHolder, newDirectory, newDirectoryPath, column_to_sort));
+				pthread_create(&thread, 0, goThroughPath, createThreadsTraverse(output_dir, 0, threadHolder, newDirectory, newDirectoryPath));
 				travelDirectoryArgs->threadHolder[travelDirectoryArgs->counter++] = thread;
 			}
 		} 
@@ -262,7 +272,7 @@ void goThroughPath(void* args){
 
 			if (strcmp(lastdot,".csv") != 0) {
 				printf("File is not a .csv: %s\n", d_name);
-			} else if(isAlreadySorted(pathname, column_to_sort)) {
+			} else if(isAlreadySorted(pathname, global_column_to_sort)) {
 				printf("File already sorted: %s\n", d_name);
 				break;
 			} else {
@@ -272,7 +282,7 @@ void goThroughPath(void* args){
 					//directory_path has only the parent directories of the file
 					//instead of forking we call the method createThreadsSort
 					pthread_t thread;
-					pthread_create(&thread, 0, processFiletoSort, createThreadsSort(pathname, d_name, column_to_sort, csvFile, output_dir, directory_path, travelDirectoryArgs->counter));
+					pthread_create(&thread, 0, processFiletoSort, createThreadsSort(pathname, d_name, csvFile, output_dir, directory_path, travelDirectoryArgs->counter));
 					travelDirectoryArgs->threadHolder[travelDirectoryArgs->counter++] = thread;
 				}
 			}	
@@ -282,8 +292,9 @@ void goThroughPath(void* args){
 	}
 
 	//WAIT FOR THREADS TO FINISH 
-	int i,j;
-	int row1Length,row2Length;
+	int i=0,j=0;
+	int rowSet1Length=0;
+	int rowSet2Length=0;
 	int totalthreads = travelDirectoryArgs->counter;
 
 	threadIds[counterofthreads] = pthread_self(); 
@@ -320,47 +331,59 @@ void goThroughPath(void* args){
 		while(!is_empty(StackOfSortedFiles)) {
 			//printf("The stack has %d elements in it.\n", StackOfSortedFiles->count);
 			if(StackOfSortedFiles->count > 1) {
-				Row ** row1 = pop(StackOfSortedFiles);
-				Row ** row2 = pop(StackOfSortedFiles);
-				//printf("Popping row1 from the stack, first movie has director_name: %s\n", row1[0]->colEntries[1].value);
-				//printf("Popping row2 from the stack, first movie has director_name: %s\n", row2[0]->colEntries[1].value);
-				sortedRows = mergeRowsTwoFinger(row1, row2, &row1Length, &row2Length);
+				Row ** rowSet1 = pop(StackOfSortedFiles);
+				Row ** rowSet2 = pop(StackOfSortedFiles);
+				
+				rowSet1Length = getAmountOfRows(rowSet1);
+				rowSet2Length = getAmountOfRows(rowSet2);
 
-				printf("Row1 has length: %d\n",row1Length);
-				printf("Row2 has length: %d\n",row2Length);
+				printf("Row1 has length: %d\n",rowSet1Length);
+				printf("Row2 has length: %d\n",rowSet2Length);
 
-				//free the rows poped from the stack
-				/*for(i = 0; i < row1Length; i++) {
-					for(j = 0; j < NUM_COLS; j++) {
-						free(row1[i]->colEntries[j].value);
-						row1[i]->colEntries[j].value = NULL;
-						free(row1[i]->colEntries[j].type);
-						row1[i]->colEntries[j].type = NULL;
+				sortedRows = malloc(sizeof(Row) * (rowSet1Length + rowSet2Length + 1));
+				if(sortedRows != NULL) {
+					//printf("Popping row1 from the stack, first movie has director_name: %s\n", row1[0]->colEntries[1].value);
+					//printf("Popping row2 from the stack, first movie has director_name: %s\n", row2[0]->colEntries[1].value);
+					mergeRowsTwoFinger(sortedRows, rowSet1, rowSet2);
+
+					printf("rowSet1 and rowSet2 have been popped from the stack and combined into sortedRows.\n");
+
+					//free the rows popped from the stack
+					/*for(i = 0; i < row1Length; i++) {
+						for(j = 0; j < NUM_COLS; j++) {
+							free(row1[i]->colEntries[j].value);
+							row1[i]->colEntries[j].value = NULL;
+							free(row1[i]->colEntries[j].type);
+							row1[i]->colEntries[j].type = NULL;
+						}
+						free(row1[i]);
+						row1[i] = NULL;
 					}
-					free(row1[i]);
-					row1[i] = NULL;
-				}
 
-				for(i = 0; i < row2Length; i++) {
-					for(j = 0; j < NUM_COLS; j++) {
-						free(row2[i]->colEntries[j].value);
-						row2[i]->colEntries[j].value = NULL;
-						free(row2[i]->colEntries[j].type);
-						row2[i]->colEntries[j].type = NULL;
+					for(i = 0; i < row2Length; i++) {
+						for(j = 0; j < NUM_COLS; j++) {
+							free(row2[i]->colEntries[j].value);
+							row2[i]->colEntries[j].value = NULL;
+							free(row2[i]->colEntries[j].type);
+							row2[i]->colEntries[j].type = NULL;
+						}
+						free(row2[i]);
+						row2[i] = NULL;
 					}
-					free(row2[i]);
-					row2[i] = NULL;
+
+					free(row1);
+					row1 = NULL;
+					free(row2);
+					row2 = NULL;*/
+
+					//printf("Row1 and Row2 have been merged. The first director is: %s\tThe director is: %s\n", sortedRows[0]->colEntries[1].value,sortedRows[1]->colEntries[1].value);
+					push(StackOfSortedFiles, sortedRows);
+				} else {
+
 				}
-
-				free(row1);
-				row1 = NULL;
-				free(row2);
-				row2 = NULL;*/
-
-				//printf("Row1 and Row2 have been merged. The first director is: %s\tThe director is: %s\n", sortedRows[0]->colEntries[1].value,sortedRows[1]->colEntries[1].value);
-				push(StackOfSortedFiles, sortedRows);
 			} else if (StackOfSortedFiles->count == 1) {
 				sortedRows = pop(StackOfSortedFiles);
+				rowSet1Length = getAmountOfRows(sortedRows);
 				//printf("Popping row1 from the stack, first movie has director_name: %s\n", sortedRows[0]->colEntries[1].value);
 			}
 		}
@@ -372,11 +395,11 @@ void goThroughPath(void* args){
 		
 		//TODO: Move this output file determination to before the threading even begins
 		//Default behavior dumps files into input directory
-		finalDirectoryPath = (char *)calloc(1, strlen(directory_path) + sizeof("/AllFiles-sorted-") + sizeof(global_column_to_sort) + sizeof(".csv") + 1);
+		finalDirectoryPath = (char *)calloc(1, strlen(global_output_dir) + sizeof("/AllFiles-sorted-") + sizeof(global_column_to_sort) + sizeof(".csv") + 5);
 		
 		printf("The directory path is currently :'%s'\n",finalDirectoryPath);
-
-		strcpy(finalDirectoryPath, directory_path);
+		
+		strcpy(finalDirectoryPath, global_output_dir);
 
 		printf("The directory path is currently :'%s'\n",finalDirectoryPath);
 		
@@ -392,12 +415,16 @@ void goThroughPath(void* args){
 			//strcpy(csvFileOutputPath,output_dir);
 		//}*/
 		//open the output directory again and put the csv file there.
-		strcat(finalDirectoryPath,"/AllFiles-sorted-");
+		if(finalDirectoryPath[strlen(finalDirectoryPath) - 1] == '/') {
+			strcat(finalDirectoryPath,"AllFiles-sorted-");
+		} else {
+			strcat(finalDirectoryPath,"/AllFiles-sorted-");
+		}
 		
-		printf("The column_to_sort is: %s\n", column_to_sort);
+		printf("The column_to_sort is: %s\n", global_column_to_sort);
 		printf("The directory path is currently :'%s'\n",finalDirectoryPath);
 
-		strcat(finalDirectoryPath, column_to_sort);
+		strcat(finalDirectoryPath, global_column_to_sort);
 
 		printf("The directory path is currently :'%s'\n",finalDirectoryPath);
 
@@ -410,40 +437,26 @@ void goThroughPath(void* args){
 		printf("The last character in the string is: '%d'\n",finalDirectoryPath[strlen(finalDirectoryPath)]);
 
 		FILE *csvFileOut = fopen(finalDirectoryPath,"w");
-		
-		printToCSV(csvFileOut, sortedRows, numRows2, NUM_COLS);
+
+		printToCSV(csvFileOut, sortedRows, rowSet1Length, NUM_COLS);
 
 		stack_destroy(StackOfSortedFiles);
 
 		//free the rows poped from the stack
-		/*for(i = 0; i < row1Length; i++) {
+		for(i = 0; i < rowSet1Length; i++) {
 			for(j = 0; j < NUM_COLS; j++) {
-				free(row1[i]->colEntries[j].value);
-				row1[i]->colEntries[j].value = NULL;
-				free(row1[i]->colEntries[j].type);
-				row1[i]->colEntries[j].type = NULL;
+				free(sortedRows[i]->colEntries[j].value);
+				sortedRows[i]->colEntries[j].value = NULL;
+				free(sortedRows[i]->colEntries[j].type);
+				sortedRows[i]->colEntries[j].type = NULL;
 			}
-			free(row1[i]);
-			row1[i] = NULL;
+			free(sortedRows[i]);
+			sortedRows[i] = NULL;
 		}
 
-		for(i = 0; i < row2Length; i++) {
-			for(j = 0; j < NUM_COLS; j++) {
-				free(row2[i]->colEntries[j].value);
-				row2[i]->colEntries[j].value = NULL;
-				free(row2[i]->colEntries[j].type);
-				row2[i]->colEntries[j].type = NULL;
-			}
-			free(row2[i]);
-			row2[i] = NULL;
-		}
-
-		free(row1);
-		row1 = NULL;
-		free(row2);
-		row2 = NULL;*/
-		
 		free(sortedRows);
+		sortedRows = NULL;
+		
 		free(finalDirectoryPath);
 		free(args);
 		exit(0);
