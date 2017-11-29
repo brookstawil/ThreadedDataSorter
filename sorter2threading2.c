@@ -29,6 +29,7 @@ int main (int argc, char* argv[]) {
 	root = getpid();
 	rootTID = pthread_self();
 	printf("Initial PID: %d \n", root);
+	printf("TIDS of all child threads: ");
 
 	char *errorMessage = "The program must specify a column to sort, given by the -c argument check documentation for a list of valid columns.\n";
 	int i; 
@@ -114,16 +115,12 @@ args_travelDirectory * createThreadsTraverse(char * output_dir, int counter, pth
 	return travelDirectoryArgs;
 }
 
-args_sortedRowStackPop * createStackPop(Row ** row1, Row ** row2) {
-
-}
-
 //Takes in a thread argument structure, and uses that to retrieve all necessary information.
 void processFiletoSort(void* args){
 	args_sortFile* sortFileArgs = args;
 	sortFileArgs->counter++;
 	
-	printf("Thread %u is sorting the file: %s \n", pthread_self(),sortFileArgs->directoryName);
+	printf("%u, ", pthread_self());
 	threadIds[counterofthreads] = pthread_self(); 
 	counterofthreads++;
 
@@ -215,7 +212,8 @@ void goThroughPath(void* args){
 	char* output_dir = global_output_dir;
 	pthread_t* threadHolder = travelDirectoryArgs->threadHolder;
 	char* finalDirectoryPath;
-	int counterofthreads = travelDirectoryArgs->counter;
+	threadHolder[counterofthreads] = pthread_self();
+	counterofthreads++;
 
 	//while we go through the directory -> in the parent process keep looking for csv files
 	while(directory != NULL) {
@@ -297,7 +295,6 @@ void goThroughPath(void* args){
 	int rowSet2Length=0;
 	int totalthreads = travelDirectoryArgs->counter;
 
-	threadIds[counterofthreads] = pthread_self(); 
 	printf("The thread %u has a count of: %d\n", pthread_self(), totalthreads);
 
 	//calling pthread_self() here only gives the thread id's of the thread for going through directories
@@ -312,7 +309,6 @@ void goThroughPath(void* args){
 	//TODO: Parallelize poping from the stack
 	if(getpid() == root && pthread_self() == rootTID){
 
-		printf("TIDS of all child threads: ");
 		for(i = 0; i < counterofthreads; i++){
 			printf("%u,", threadIds[i]);
 		}
