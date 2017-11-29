@@ -192,7 +192,7 @@ void goThroughPath(void* args){
 	char* output_dir = global_output_dir;
 	pthread_t* threadHolder = travelDirectoryArgs->threadHolder;
 	char* finalDirectoryPath;
-	threadHolder[counterofthreads] = pthread_self();
+	threadIds[counterofthreads] = pthread_self();
 	counterofthreads++;
 
 	//while we go through the directory -> in the parent process keep looking for csv files
@@ -323,34 +323,6 @@ void goThroughPath(void* args){
 					mergeRowsTwoFinger(sortedRows, rowSet1, rowSet2);
 
 					printf("rowSet1 and rowSet2 have been popped from the stack and combined into sortedRows.\n");
-
-					//free the rows popped from the stack
-					/*for(i = 0; i < row1Length; i++) {
-						for(j = 0; j < NUM_COLS; j++) {
-							free(row1[i]->colEntries[j].value);
-							row1[i]->colEntries[j].value = NULL;
-							free(row1[i]->colEntries[j].type);
-							row1[i]->colEntries[j].type = NULL;
-						}
-						free(row1[i]);
-						row1[i] = NULL;
-					}
-
-					for(i = 0; i < row2Length; i++) {
-						for(j = 0; j < NUM_COLS; j++) {
-							free(row2[i]->colEntries[j].value);
-							row2[i]->colEntries[j].value = NULL;
-							free(row2[i]->colEntries[j].type);
-							row2[i]->colEntries[j].type = NULL;
-						}
-						free(row2[i]);
-						row2[i] = NULL;
-					}
-
-					free(row1);
-					row1 = NULL;
-					free(row2);
-					row2 = NULL;*/
 
 					//printf("Row1 and Row2 have been merged. The first director is: %s\tThe director is: %s\n", sortedRows[0]->colEntries[1].value,sortedRows[1]->colEntries[1].value);
 					push(StackOfSortedFiles, sortedRows);

@@ -100,7 +100,7 @@ void mergeRowsTwoFinger(Row **sortedRows, Row **row1, Row **row2) {
 }
 
 int isValidType(Row *row) {
-    if(row == NULL || row->colEntries[colIdx].type == NULL ) {
+    if(row == NULL) {
         return 0;
     } else {
         return 1;
