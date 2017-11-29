@@ -117,7 +117,7 @@ void sortnew(Row ** rowSet, FILE* csv_in, char * columnToSort) {
         token = strtok_single(line, ",\n");
         if(!token)
             break;
-        tokenType = findType(token);
+        tokenType = findType(token, colIdx);
 
         //Set the values in the rows matrix
         char *tmp = malloc(strlen(token) + 1);
@@ -145,7 +145,7 @@ void sortnew(Row ** rowSet, FILE* csv_in, char * columnToSort) {
             if(!token)
                 break;
             
-            tokenType = findType(token);
+            tokenType = findType(token, colIdx);
             //Set the values in the rowSet matrix
 
             char *tmp2 = malloc(strlen(token) + 1);
@@ -232,8 +232,12 @@ int isValidColumn(char* columnName) {
 }
 
 //Returns the type of a given string token, does NOT perfom atoi() or atof()
-char * findType(char* token) {
-    int length,i; 
+char * findType(char* token, int colIdx) {
+    int length,i;
+
+    if(strcmp(token,"") == 0) {
+        return validColumnTypes[colIdx];
+    }
 
     length = strlen (token);
     for (i = 0; i < length; i++) {
